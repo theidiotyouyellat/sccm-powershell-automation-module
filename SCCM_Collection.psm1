@@ -596,55 +596,60 @@ The 3-character code for the site where the computer exists.
 .PARAMETER resourceId
 Resource ID for the computer whose list of collections are being retrieved.
 #>
-Function Get-SCCMCollectionsForComputer {
-    [CmdletBinding()]
-    param (
-        [string]
-        $siteProvider,
-        [string]
-        $siteCode,
-        [parameter(Mandatory=$true, Position=0)]
-        [ValidateScript( { $_ -gt 0 } )]
-        [int]
-        $resourceId
-    )
-
-    if(!($PSBoundParameters) -or !($PSBoundParameters.siteProvider)) {
-        $siteProvider = Get-SCCMSiteProvider
-    }
-    if(!($PSBoundParameters) -or !($PSBoundParameters.siteCode)) {
-        $siteCode = Get-SCCMSiteCode
-    }
-
-    # First we find all membership associations that match the colection ID of the computer in question
-    $computer = Get-SCCMComputer -siteProvider $siteProvider -siteCode $siteCode -resourceId $resourceId
-
-    if(!$computer) {
-        Throw "Unable to retrieve computer with resource ID $resourceId"
-    }
-
-    $computerCollectionIds = @()
-    $collectionMembers = Get-WMIObject -Computer $siteProvider -Namespace "root\sms\site_$siteCode" -Query "Select * From SMS_CollectionMember_a Where ResourceID= $($computer.ResourceID)"
-    foreach($collectionMember in $collectionMembers) {
-        $computerCollectionIds += $collectionMember.CollectionID
-    }
-
-    # Now that we have a list of collection IDs, we want to retrieve and return some rich collection objects    
-    if ($psversiontable.psversion.major -le 3){
-        $collectionId = $collectionName = $null # It may be set in a parent scope. Not needed in PS >= 3.0    
-    }    
-    $allServerCollections = Get-SCCMCollection -siteProvider $siteProvider -siteCode $siteCode
-
-    $computerCollections = @()
-    foreach($collectionId in $computerCollectionIds) {
-        foreach($collection in $allServerCollections) {
-            if($collection.CollectionID -eq $collectionId) {
-                $computerCollections += $collection
-            }
-        }
-    }
-
-    return $computerCollections
+Function Get-SCCMCollectionsForComputer{
+	[CmdletBinding()]
+	param (
+		[string]$siteProvider,
+		[string]$siteCode,
+		[parameter(Mandatory = $true, Position = 0)]
+		[ValidateScript({ $_ -gt 0 })]
+		[int]$resourceId
+	)
+	
+	if (!($PSBoundParameters) -or !($PSBoundParameters.siteProvider))
+	{
+		$siteProvider = Get-SCCMSiteProvider
+	}
+	if (!($PSBoundParameters) -or !($PSBoundParameters.siteCode))
+	{
+		$siteCode = Get-SCCMSiteCode
+	}
+	
+	# First we find all membership associations that match the colection ID of the computer in question
+	$computer = Get-SCCMComputer -siteProvider $siteProvider -siteCode $siteCode -resourceId $resourceId
+	
+	if (!$computer)
+	{
+		Throw "Unable to retrieve computer with resource ID $resourceId"
+	}
+	
+	$computerCollectionIds = @()
+	$collectionMembers = Get-WMIObject -Computer $siteProvider -Namespace "root\sms\site_$siteCode" -Query "Select * From SMS_FullCollectionMembership Where ResourceID= $($computer.ResourceID)"
+	foreach ($collectionMember in $collectionMembers)
+	{
+		$computerCollectionIds += $collectionMember.CollectionID
+	}
+	
+	# Now that we have a list of collection IDs, we want to retrieve and return some rich collection objects    
+	if ($psversiontable.psversion.major -le 3)
+	{
+		$collectionId = $collectionName = $null # It may be set in a parent scope. Not needed in PS >= 3.0    
+	}
+	$allServerCollections = Get-SCCMCollection -siteProvider $siteProvider -siteCode $siteCode
+	
+	$computerCollections = @()
+	foreach ($collectionId in $computerCollectionIds)
+	{
+		foreach ($collection in $allServerCollections)
+		{
+			if ($collection.CollectionID -eq $collectionId)
+			{
+				$computerCollections += $collection
+			}
+		}
+	}
+	
+	return $computerCollections
 }
 
 <#
